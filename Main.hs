@@ -7,16 +7,12 @@ strip' :: String -> String
 strip' = unpack . strip . pack
 
 readBatteryInfo :: IO String
-readBatteryInfo = do
-    readProcess "system_profiler" ["SPPowerDataType"] []
+readBatteryInfo = readProcess "system_profiler" ["SPPowerDataType"] []
 
-prefix :: [Char]
+prefix :: String
 prefix = "State of Charge (%): "
-
-batteryStat = stripPrefix prefix
 
 readBatteryState :: IO (Maybe Float)
 readBatteryState = do
     stats <- fmap strip' . lines <$> readBatteryInfo
-    let percent = find (isPrefixOf prefix) stats >>= batteryStat
-    return $ read <$> percent
+    return $ read <$> (find (isPrefixOf prefix) stats >>= stripPrefix prefix)
