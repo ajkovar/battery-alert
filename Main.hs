@@ -42,9 +42,9 @@ notifyIfLow :: IO (Maybe ())
 notifyIfLow = runMaybeT $ do
   level <- MaybeT readBatteryLevel
   isCharging <- MaybeT readBatteryChargingStatus
-  if level > 80 && isCharging then
+  if level > 60 && isCharging then
     notify level "unplug"
-  else when (level < 70 && not isCharging) $
+  else when (level < 40 && not isCharging) $
     notify level "plug"
   where notify level action = MaybeT $ void . Just <$> runCommand (notifyCommand level action)
 
