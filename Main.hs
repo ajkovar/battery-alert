@@ -5,6 +5,9 @@ import Data.Text (strip, pack, unpack)
 import Text.Printf (printf)
 import System.Process.Internals (ProcessHandle(ProcessHandle))
 import Control.Monad.Trans.Maybe (MaybeT(MaybeT, runMaybeT))
+import Control.Concurrent (threadDelay)
+import Control.Monad (when)
+import Control.Monad.Cont (void)
 
 strip' :: String -> String
 strip' = unpack . strip . pack
@@ -29,7 +32,19 @@ notifyCommand level =
            (notificationBody level)
            "Unplug Computer"
 
-main :: IO (Maybe ProcessHandle)
-main = runMaybeT $ do
-  level <- MaybeT readBatteryLevel
-  MaybeT $ Just <$> runCommand (notifyCommand level)
+isOutsideTargetRange :: Float -> Bool
+isOutsideTargetRange = (||) <$> (>80) <*> (<70)
+
+notifyIfLow :: IO ()
+notifyIfLow = do
+  level <- readBatteryLevel
+  maybe (return ()) (void . runCommand . notifyCommand) level 
+
+sleepDuration :: Int
+sleepDuration = 1000000 * 30
+
+main :: IO ()
+main = do
+  notifyIfLow
+  threadDelay sleepDuration
+  main
