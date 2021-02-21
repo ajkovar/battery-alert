@@ -15,13 +15,16 @@ strip' = unpack . strip . pack
 readBatteryInfo :: IO String
 readBatteryInfo = readProcess "system_profiler" ["SPPowerDataType"] []
 
-prefix :: String
-prefix = "State of Charge (%): "
+readBatteryStat :: String -> IO (Maybe String)
+readBatteryStat prefix = do
+    stats <- fmap strip' . lines <$> readBatteryInfo
+    return $ find (isPrefixOf prefix) stats >>= stripPrefix prefix
 
 readBatteryLevel :: IO (Maybe Float)
-readBatteryLevel = do
-    stats <- fmap strip' . lines <$> readBatteryInfo
-    return $ read <$> (find (isPrefixOf prefix) stats >>= stripPrefix prefix)
+readBatteryLevel = fmap read <$> readBatteryStat "State of Charge (%): "
+
+readBatteryChargingStatus :: IO (Maybe Bool)
+readBatteryChargingStatus = fmap (=="Yes") <$> readBatteryStat "Charging: "
 
 notificationBody :: Float -> String -> String
 notificationBody = printf "Battery level is at %.0f%%.  Time to %s!"
@@ -38,9 +41,10 @@ notifyCommand level =
 notifyIfLow :: IO (Maybe ())
 notifyIfLow = runMaybeT $ do
   level <- MaybeT readBatteryLevel
-  if level > 80 then
+  isCharging <- MaybeT readBatteryChargingStatus
+  if level > 80 && isCharging then
     notify level "unplug"
-  else when (level < 70) $
+  else when (level < 70 && not isCharging) $
     notify level "plug"
   where notify level action = MaybeT $ void . Just <$> runCommand (notifyCommand level action)
 
