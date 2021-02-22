@@ -45,7 +45,7 @@ notifyIfLow = runMaybeT $ do
   if level > 60 && isCharging then
     notify level "unplug"
   else when (level < 40 && not isCharging) $
-    notify level "plug"
+    notify level "plug in"
   where notify level action = MaybeT $ void . Just <$> runCommand (notifyCommand level action)
 
 sleepDuration :: Int
